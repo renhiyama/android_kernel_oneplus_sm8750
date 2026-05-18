@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _LINUX_CORESIGHT_H
@@ -167,7 +166,6 @@ struct coresight_desc {
 
 /**
  * struct coresight_connection - representation of a single connection
- * @source_name: source component's name.
  * @src_port:	a connection's output port number.
  * @dest_port:	destination's input port number @src_port is connected to.
  * @dest_fwnode: destination component's fwnode handle.
@@ -196,7 +194,6 @@ struct coresight_desc {
  *                                   +-----------------------------+
  */
 struct coresight_connection {
-	const char *source_name;
 	int src_port;
 	int dest_port;
 	struct fwnode_handle *dest_fwnode;

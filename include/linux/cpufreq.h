@@ -32,9 +32,6 @@
  */
 
 #define CPUFREQ_ETERNAL			(-1)
-
-#define CPUFREQ_DEFAULT_TRANSITION_LATENCY_NS	NSEC_PER_MSEC
-
 #define CPUFREQ_NAME_LEN		16
 /* Print length for names. Extra 1 space for accommodating '\n' in prints */
 #define CPUFREQ_NAME_PLEN		(CPUFREQ_NAME_LEN + 1)
@@ -46,6 +43,10 @@ enum cpufreq_table_sorting {
 	CPUFREQ_TABLE_SORTED_ASCENDING,
 	CPUFREQ_TABLE_SORTED_DESCENDING
 };
+
+ssize_t store_scaling_governor(struct cpufreq_policy *policy,
+                                        const char *buf, size_t count);
+ssize_t show_scaling_governor(struct cpufreq_policy *policy, char *buf);
 
 struct cpufreq_cpuinfo {
 	unsigned int		max_freq;
@@ -1215,7 +1216,6 @@ void arch_set_freq_scale(const struct cpumask *cpus,
 {
 }
 #endif
-
 /* the following are really really optional */
 extern struct freq_attr cpufreq_freq_attr_scaling_available_freqs;
 extern struct freq_attr cpufreq_freq_attr_scaling_boost_freqs;

@@ -65,13 +65,15 @@ struct robust_list_head;
 struct root_domain;
 struct rq;
 struct sched_attr;
+struct sched_param;
 struct seq_file;
 struct sighand_struct;
 struct signal_struct;
 struct task_delay_info;
-struct task_dma_buf_info;
 struct task_group;
 struct user_event_mm;
+
+#include <linux/sched/ext.h>
 
 /*
  * Task state bitmask. NOTE! These bits are also
@@ -296,6 +298,11 @@ enum {
 
 extern void scheduler_tick(void);
 
+#ifdef CONFIG_SLIM_SCHED
+extern enum hrtimer_restart scheduler_tick_no_balance(struct hrtimer *timer);
+extern void stop_shadow_tick_timer(void);
+#endif
+
 #define	MAX_SCHEDULE_TIMEOUT		LONG_MAX
 
 extern long schedule_timeout(long timeout);
@@ -373,10 +380,6 @@ enum uclamp_id {
 extern struct root_domain def_root_domain;
 extern struct mutex sched_domains_mutex;
 #endif
-
-struct sched_param {
-	int sched_priority;
-};
 
 struct sched_info {
 #ifdef CONFIG_SCHED_INFO
@@ -1520,10 +1523,13 @@ struct task_struct {
 	 */
 	struct callback_head		l1d_flush_kill;
 #endif
-
-	ANDROID_KABI_USE(1, struct task_dma_buf_info *dmabuf_info);
-
+#ifdef CONFIG_SLIM_SCHED
+	ANDROID_KABI_USE(1, unsigned long sched_prop);
+	ANDROID_KABI_USE(2, struct sched_ext_entity *scx);
+#else
+	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
+#endif
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 	ANDROID_KABI_RESERVE(5);
@@ -1805,11 +1811,6 @@ static __always_inline bool is_percpu_thread(void)
 #endif
 }
 
-static __always_inline bool is_user_task(struct task_struct *task)
-{
-	return task->mm && !(task->flags & (PF_KTHREAD | PF_USER_WORKER));
-}
-
 /* Per-process atomic flags. */
 #define PFA_NO_NEW_PRIVS		0	/* May not gain new privileges. */
 #define PFA_SPREAD_PAGE			1	/* Spread page cache over cpuset */
@@ -1931,6 +1932,7 @@ static inline int task_nice(const struct task_struct *p)
 {
 	return PRIO_TO_NICE((p)->static_prio);
 }
+
 
 extern int can_nice(const struct task_struct *p, const int nice);
 extern int task_curr(const struct task_struct *p);
@@ -2353,12 +2355,6 @@ enum rseq_event_mask {
 	RSEQ_EVENT_MIGRATE	= (1U << RSEQ_EVENT_MIGRATE_BIT),
 };
 
-#ifdef CONFIG_MEMBARRIER
-# define RSEQ_EVENT_GUARD	irq
-#else
-# define RSEQ_EVENT_GUARD	preempt
-#endif
-
 static inline void rseq_set_notify_resume(struct task_struct *t)
 {
 	if (t->rseq)
@@ -2377,8 +2373,9 @@ static inline void rseq_handle_notify_resume(struct ksignal *ksig,
 static inline void rseq_signal_deliver(struct ksignal *ksig,
 				       struct pt_regs *regs)
 {
-	scoped_guard(RSEQ_EVENT_GUARD)
-		__set_bit(RSEQ_EVENT_SIGNAL_BIT, &current->rseq_event_mask);
+	preempt_disable();
+	__set_bit(RSEQ_EVENT_SIGNAL_BIT, &current->rseq_event_mask);
+	preempt_enable();
 	rseq_handle_notify_resume(ksig, regs);
 }
 
